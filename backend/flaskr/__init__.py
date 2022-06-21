@@ -3,16 +3,16 @@ from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
+import math
 
 from models import setup_db, Question, Category
-
+from utils.helper import convertRowToObject, convertTableToList
 QUESTIONS_PER_PAGE = 10
 
 def create_app(test_config=None):
     # create and configure the app
     app = Flask(__name__)
     setup_db(app)
-
     """
     @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
     """
@@ -26,8 +26,16 @@ def create_app(test_config=None):
     Create an endpoint to handle GET requests
     for all available categories.
     """
+    @app.route('/questions/all', methods=['GET'])
+    def getAllQuestions():
+        listQuestions = Question.query.all()
+        listObj = convertTableToList(listQuestions)
 
-
+        return jsonify({
+            'success':True,
+            'questions':listObj,
+            'totalQuestions':len(listObj)
+        })
     """
     @TODO:
     Create an endpoint to handle GET requests for questions,
@@ -40,7 +48,23 @@ def create_app(test_config=None):
     ten questions per page and pagination at the bottom of the screen for three pages.
     Clicking on the page numbers should update the questions.
     """
+    @app.route('/questions', methods=['GET'])
+    def getQuestionsByPage():
+        page = int(request.args.get('page', 1, type=int))
+        size = 10
+        start = (page-1) * size
+        end = start + size
+        questions = Question.query.all()
+        paginateQuestion = [question.format() for question in questions]
 
+        return jsonify({
+            'success': True,
+            'questions': paginateQuestion[start:end],
+            'total_questions': len(paginateQuestion),
+            'totalPage':math.ceil(len(paginateQuestion)/size),
+            'categories':[],
+            'current_category':[]
+            })
     """
     @TODO:
     Create an endpoint to DELETE question using a question ID.
@@ -91,12 +115,22 @@ def create_app(test_config=None):
     one question at a time is displayed, the user is allowed to answer
     and shown whether they were correct or not.
     """
-
+    
     """
     @TODO:
     Create error handlers for all expected errors
     including 404 and 422.
     """
+    
+    @app.route('/categories', methods=['GET'])
+    def getAllCategories():
+        listCategory = Category.query.all()
+        listObj = convertTableToList(listCategory)
+
+        return jsonify({
+            'success': True,
+            'categories': listObj
+        })
 
     return app
 
