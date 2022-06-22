@@ -1,11 +1,12 @@
 import os
+from unicodedata import category
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 import math
 
-from models import setup_db, Question, Category
+from models import setup_db, Question, Category, db
 from utils.helper import convertRowToObject, convertTableToList
 QUESTIONS_PER_PAGE = 10
 
@@ -16,11 +17,15 @@ def create_app(test_config=None):
     """
     @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
     """
-
+    CORS(app)
     """
     @TODO: Use the after_request decorator to set Access-Control-Allow
     """
-
+    @app.after_request
+    def after_request(response):
+        response.headers.add('Access-Control-Allow-Headers', 'Content-type, Authorization')
+        response.headers.add('Access-Control-Allow-Headers', 'GET, POST, PATCH, DELETE, PUT, OPTIONS')
+        return response
     """
     @TODO:
     Create an endpoint to handle GET requests
@@ -56,14 +61,15 @@ def create_app(test_config=None):
         end = start + size
         questions = Question.query.all()
         paginateQuestion = [question.format() for question in questions]
-
+        categories = Category.query.all()
+        listCategoryObj = convertTableToList(categories)
         return jsonify({
             'success': True,
             'questions': paginateQuestion[start:end],
             'total_questions': len(paginateQuestion),
             'totalPage':math.ceil(len(paginateQuestion)/size),
-            'categories':[],
-            'current_category':[]
+            'categories':listCategoryObj,
+            'current_category':listCategoryObj
             })
     """
     @TODO:
@@ -72,7 +78,23 @@ def create_app(test_config=None):
     TEST: When you click the trash icon next to a question, the question will be removed.
     This removal will persist in the database and when you refresh the page.
     """
-
+    @app.route('/questions/<int:id>', methods=['DELETE'])
+    def deleteQuestion(id):
+        if(not id):
+            return jsonify({
+                "success": True
+            })
+        
+        try:
+            Question.query.filter_by(id=id).delete()
+            db.session.commit()
+        except:
+            abort(500)
+            return
+        #delete successful    
+        return jsonify({
+                "success": True
+            })
     """
     @TODO:
     Create an endpoint to POST a new question,
@@ -83,7 +105,29 @@ def create_app(test_config=None):
     the form will clear and the question will appear at the end of the last page
     of the questions list in the "List" tab.
     """
+    @app.route("/questions", methods=['POST'])
+    def addNewQuestion():
+        data = request.json
+        question = data["question"]
+        answer = data["answer"]
+        category = data["category"]
+        difficulty = data["difficulty"]
 
+        if(not question or not answer or not category or not difficulty):
+            abort(400)
+            return
+        try:
+                questionObj = Question(question, answer, category, difficulty)
+                data.get_json()
+                db.session.add(questionObj)
+                db.session.commit()
+        except:
+            abort(500, "server error")
+            return
+
+        return jsonify({
+            "success": True,
+        })
     """
     @TODO:
     Create a POST endpoint to get questions based on a search term.
@@ -94,7 +138,18 @@ def create_app(test_config=None):
     only question that include that string within their question.
     Try using the word "title" to start.
     """
-
+    @app.route("/questions/search", methods=["POST"])
+    def searchQuestion():
+        searchTerm = request.json["searchTerm"]
+        
+        listQuestions = Question.query.filter(Question.question.like('%' + searchTerm + '%')).all()
+        resultObject = convertTableToList(listQuestions)
+        return jsonify({
+            "success": True,
+            "questions": resultObject,
+            "totalQuestions": len(resultObject),
+            "currentCategory": []
+        })
     """
     @TODO:
     Create a GET endpoint to get questions based on category.
@@ -103,7 +158,19 @@ def create_app(test_config=None):
     categories in the left column will cause only questions of that
     category to be shown.
     """
+    @app.route("/categories/<int:id>/questions")
+    def getQuestionsByCategory(id):
+        questions = Question.query.filter_by(category=id).all()
+        category = Category.query.filter_by(id=id).all()
+        listCategoryObj = convertTableToList(category)
+        listQuestionObj = convertTableToList(questions)
 
+        return jsonify({
+            "success": True,
+            "questions": listQuestionObj,
+            "totalQuestions": len(listQuestionObj),
+            "currentCategory": listCategoryObj
+        })
     """
     @TODO:
     Create a POST endpoint to get questions to play the quiz.
@@ -115,7 +182,52 @@ def create_app(test_config=None):
     one question at a time is displayed, the user is allowed to answer
     and shown whether they were correct or not.
     """
-    
+    @app.route('/quizzes', methods=['POST'])
+    def getQuestionOfQuizzes():
+        data = request.json
+        previous_questions = data["previous_questions"]
+        quiz_category = data["quiz_category"]
+
+        if(not quiz_category or not (quiz_category["id"] >= 0)):
+            abort(400)
+            return
+        
+        questions = []
+        if(quiz_category["id"] == 0):
+            questions = Question.query.all()
+        else:
+            questions = Question.query.filter_by(category=quiz_category["id"]).all()
+        
+        listQuestionObj = convertTableToList(questions)
+       
+        if(len(listQuestionObj) > 1):
+            randomQuestion = None
+            try:
+                while(not randomQuestion or randomQuestion["id"] in previous_questions):
+                    randomQuestion = random.choice(listQuestionObj)
+            except:
+                abort(500)
+                return
+            
+            return jsonify({
+                "success": True,
+                "question": randomQuestion
+            })
+        elif (len(listQuestionObj) == 1):
+            return jsonify({
+                "success": True,
+                "question": listQuestionObj[0]
+            })
+        else:
+            return jsonify({
+                "success": True,
+                "question": {}
+            })
+             
+
+
+        
+
     """
     @TODO:
     Create error handlers for all expected errors

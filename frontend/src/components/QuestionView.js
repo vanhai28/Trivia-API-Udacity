@@ -11,7 +11,7 @@ class QuestionView extends Component {
       questions: [],
       page: 1,
       totalQuestions: 0,
-      categories: {},
+      categories: [],
       currentCategory: null,
     };
   }
@@ -85,7 +85,7 @@ class QuestionView extends Component {
 
   submitSearch = (searchTerm) => {
     $.ajax({
-      url: `/questions`, //TODO: update request URL
+      url: `/questions/search`, //TODO: update request URL
       type: "POST",
       dataType: "json",
       contentType: "application/json",
@@ -139,14 +139,14 @@ class QuestionView extends Component {
             Categories
           </h2>
           <ul>
-            {Object.keys(this.state.categories).map((id) => (
+            {this.state.categories.map((item) => (
               <li
-                key={id}
+                key={item.id}
                 onClick={() => {
-                  this.getByCategory(id);
+                  this.getByCategory(item.id);
                 }}
               >
-                {this.state.categories[id]}
+                {item.type}
                 {/* <img
                   className="category"
                   alt={`${this.state.categories[id].toLowerCase()}`}
