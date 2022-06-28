@@ -146,8 +146,9 @@ def create_app(test_config=None):
         
         listQuestions = Question.query.filter(Question.question.like('%' + searchTerm + '%')).all()
         resultObject = convertTableToList(listQuestions)
-        category = Category.query.filter_by(id=id).all()
+        category = Category.query.all()
         listCategoryObj = convertTableToList(category)
+
         return jsonify({
             "success": True,
             "questions": resultObject,
