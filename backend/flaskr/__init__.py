@@ -1,10 +1,13 @@
 import os
 from unicodedata import category
+import werkzeug
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
 import math
+
+import werkzeug
 
 from models import setup_db, Question, Category, db
 from utils.helper import convertRowToObject, convertTableToList
@@ -29,7 +32,7 @@ def create_app(test_config=None):
     """
     @TODO:
     Create an endpoint to handle GET requests
-    for all available categories.
+    for all available questions.
     """
     @app.route('/questions/all', methods=['GET'])
     def getAllQuestions():
@@ -231,15 +234,6 @@ def create_app(test_config=None):
             })
              
 
-
-        
-
-    """
-    @TODO:
-    Create error handlers for all expected errors
-    including 404 and 422.
-    """
-    
     @app.route('/categories', methods=['GET'])
     def getAllCategories():
         listCategory = Category.query.all()
@@ -249,6 +243,27 @@ def create_app(test_config=None):
             'success': True,
             'categories': listObj
         })
+        
+
+    """
+    @TODO:
+    Create error handlers for all expected errors
+    including 404 and 422.
+    """
+    def handle_bad_request(e):
+        return 'Bad request!', 400
+    app.register_error_handler(400, handle_bad_request)
+
+    def handle_not_found(e):
+        return 'Not found!!!!', 404
+    app.register_error_handler(404, handle_not_found)
+
+    def handle_422(e):
+        return 'Unprocessable Entity!!!!', 404
+    app.register_error_handler(422, handle_422)
+
+    def handle_server_error(e):
+        return 'Something went wrong with server', 500
+    app.register_error_handler(500, handle_server_error)
 
     return app
-
