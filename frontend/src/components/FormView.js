@@ -19,7 +19,6 @@ class FormView extends Component {
       url: `/categories`, //TODO: update request URL
       type: "GET",
       success: (result) => {
-        console.log(result);
         this.setState({ categories: result.categories });
       },
       error: (error) => {

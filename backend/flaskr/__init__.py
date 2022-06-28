@@ -56,6 +56,8 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['GET'])
     def getQuestionsByPage():
         page = int(request.args.get('page', 1, type=int))
+        if(page<=0):
+            return "Bad request!", 400
         size = 10
         start = (page-1) * size
         end = start + size
@@ -81,9 +83,7 @@ def create_app(test_config=None):
     @app.route('/questions/<int:id>', methods=['DELETE'])
     def deleteQuestion(id):
         if(not id):
-            return jsonify({
-                "success": True
-            })
+             return "Bad request!", 400
         
         try:
             Question.query.filter_by(id=id).delete()
@@ -118,16 +118,18 @@ def create_app(test_config=None):
             return
         try:
                 questionObj = Question(question, answer, category, difficulty)
-                data.get_json()
                 db.session.add(questionObj)
                 db.session.commit()
+                returnQuestion = convertRowToObject(questionObj)
+                return jsonify({
+                    "success": True,
+                    "question": returnQuestion
+                })
         except:
             abort(500, "server error")
             return
 
-        return jsonify({
-            "success": True,
-        })
+        
     """
     @TODO:
     Create a POST endpoint to get questions based on a search term.
@@ -144,11 +146,13 @@ def create_app(test_config=None):
         
         listQuestions = Question.query.filter(Question.question.like('%' + searchTerm + '%')).all()
         resultObject = convertTableToList(listQuestions)
+        category = Category.query.filter_by(id=id).all()
+        listCategoryObj = convertTableToList(category)
         return jsonify({
             "success": True,
             "questions": resultObject,
             "totalQuestions": len(resultObject),
-            "currentCategory": []
+            "currentCategory": listCategoryObj
         })
     """
     @TODO:
@@ -162,6 +166,7 @@ def create_app(test_config=None):
     def getQuestionsByCategory(id):
         questions = Question.query.filter_by(category=id).all()
         category = Category.query.filter_by(id=id).all()
+
         listCategoryObj = convertTableToList(category)
         listQuestionObj = convertTableToList(questions)
 
